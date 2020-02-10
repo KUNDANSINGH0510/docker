@@ -1,0 +1,96 @@
+#!/bin/bash
+sudo su
+yum update -y
+yum install -y httpd.x86_64
+systemctl start httpd.service
+systemctl enable httpd.service
+systemctl status httpd.service
+systemctl stop httpd.service
+systemctl restart httpd.service
+
+echo "Kundan Singh" > /var/www/html/index.html
+echo "Kundan Singh from $(hostname -f)" > /var/www/html/index.html
+
+
+
+
+
+
+User Data for ASG Launch Configuration/EC2 Instance-
+#!/bin/bash
+#install httpd (Linux 2 version)
+sudo su
+yum update -y
+yum install -y httpd.x86_64
+systemctl start httpd.service
+systemctl enable httpd.service
+cd /var/www/html
+sudo touch index.html
+echo "I am Kundan Singh from $(hostname -f)" > /var/www/html/index.html
+
+
+Docker Image and Push it to AWS ECR Repository
+
+Step 1 -  Dockerfile
+
+from amazonlinux:latest
+run yum -y update
+run yum -y install unzip aws-cli
+run yum -y install java-1.8.0-openjdk
+
+run yum install -y rpm wget libaio
+run wget https://download.oracle.com/otn_software/linux/instantclient/oracle-instantclient-basic-linuxx64.rpm
+run wget https://download.oracle.com/otn_software/linux/instantclient/oracle-instantclient-sqlplus-linuxx64.rpm
+run rpm -ivh oracle-instantclient-basic*.rpm oracle-instantclient-sqlplus*.rpm
+
+
+Step 2 - Build Image
+
+docker build -t kundandockerimage .
+	Successfully built 3636f31455a6
+	Successfully tagged kundandockerimage:latest
+
+Step 3  - List Image
+
+docker images
+	REPOSITORY          TAG                 IMAGE ID            CREATED              SIZE
+	kundandockerimage   latest              3636f31455a6        About a minute ago   1.58GB
+	<none>              <none>              b9bb60ccc0bd        26 hours ago         92.1MB
+	ubuntu              18.04               ccc6e87d482b        3 weeks ago          64.2MB
+	amazonlinux         latest              54f3850f151f        4 weeks ago          163MB
+	
+Step 4 - Create new directory on the host machine for the webroot data
+
+mkdir -p /webroot
+
+Step 5 - Create a new container based on image (kundandockerimage)
+
+docker run -d -v /webroot:/var/www/html -p 80:80 --name kundandockercontainer kundandockerimage (Optional)
+docker run --name kundandockercontainer2 kundandockerimage
+docker run --name kundandockercontainer3 -i -t kundandockerimage (Preferrable to use this)
+
+Note:
+--name kundandockercontainer kundandockerimage = We create a new container with the name 'kundandockercontainer', based on docker image 'kundandockerimage'.
+-p 80:80 = kundandockercontainer container running on port 80 on the host machine.
+-v /webroot:/var/www/html = /webroot directory on the host machine rewrite the /var/www/html directory on the container.
+
+Step 6 - Attach IAM Policy (AmazonEC2ContainerRegistryFullAccess) to IAM Role associated with EC2
+
+Step 7 - Push the docker image to ECR repository(kundandockerimage is repository name, it can be anything)
+
+Tag the Image with ECR Repository URI to create new Image with ECR URI
+docker tag kundandockerimage:latest 892751335714.dkr.ecr.ap-south-1.amazonaws.com/kundandockerimage:latest
+
+aws ecr get-login --region ap-south-1 --no-include-email	(It will give below output)
+docker login -u AWS -p eyJwYXlsb2FkIjoiRFRrdEZLdXJteDFGUjZ5K2FpZjZCVEVvcHF0QVVoOWdYeXl1aWdoTW5GeXYzcmcyc2V0WVIvRkw4NWFLWkpVMnVjeFJHVm96NE10OUNvTmE4NnRvTDNPYzVmcllNSEJwMjdjU0xvOUxWMTFzNWl3RTVHSndpbk14L3lLZUMrT1FIWmVwbDZKbkcyYXhpSkpCTTJKRUNTQVpwRXFreTNwMmRnM2JDZnlOZk5YYkwzS2VOMldjU2kyaERiNTVhUzRzcXRyeUI3dytJTW9hZkNFTFJkSHF2Vmp3alFRWWY4QUpMd25UTGhaVXZBbDV1VkxXb2xkTHVFS0pzc2g2VE9TSTJTeGZGM0QycUFkYldrZ2pYZG93Vm1qR1dQK0xVdzlCc3BBL3krcHNCeUlMYWE2M0ExYnRJQmpoKzd0aVFTczZUVnlpdjFVb0o0ekhRVUJ2TTZnYXl2aGdaU0dnd2dEZWl2OEsweXVBdmVFQzlaUS9zaUI1OWM4MStTdURLSVAwMW14UlRCNHU1UkVTMkNXR1E0UGZNTVJZU2d0aU83VTV5TVJ0WnFtNlU4MFdPTmNOdDBkcW9NYStqTGVkMjRxZTdQV2RDS0xQdzRlL2dpTCtwVnZmQi8xU0ovS2NuY1U4QVdpUEpvUXoySzJzL0hiL3RaSHpQd09nMXU4ajk5SmNkaHcrVmIxZlZjaTlDS0ZETkI2dHJLVG12NmU5OEVKMjVLYVhoNmQ0ZnU0V3dTYmV4REp6S1h6MENGQW5wd0NtbHBwRU1IaldDaWdqSTIwZGlUVDVVaHhzZHJsNFFyOXBiaW9qakp2ZE1rZXZVMjhEOW01V2padCtEVlVvYlJSRWhKT2hpMjhLWlZOK2lUU3k5UFRzVGxlQ2dmdDRqamZhM1RJOGhEcUtNVGZydmR6eEJzQ2dFbG5Bb2pDQW00RXZsbHpaNGQ0UVRxdlpCbFJSUlYyTnl2azdHTTB0bnBwa1VqNVVoNUkvVUE1L2wvbDNRR1dUd1pnem96Y3NkaXNPQ3VxQmtMQmNseUVHRi9ZamgzbElZc0xleTBlcXc4MzUxSEIzTHFEV2o0TUR0UVU5SVphbmlRZFlxOXhVS094eVdEQ1B4OXBpeFFKQWxMYjE1SVVqeXBoTDJ0MnpWN08vNG5PSjlyM01VQTR0VEoyazYwbURzdC9ZSUhKU1FKaG5vZHRlOU11UmlhZzl2WWFaRUhtZWswTy9ERytqTnRrQkZhNGxXcXRtUzhybVU0QTZoMElnYUxaZ25hRzd0blFSNTNKSkxlS3NDdUdaOHhEV3F0UzVmSkxXWkYwT25KbjFCaWN2U1M5amRGc205MWE0RDVSL3ZiWDg1TENwdlhyWEhwRk5FNkk4RzMvV1BVNDBiSzd4N0gxYVpZQUROY2tmbWxRYW8ydTJ3dFlEajMyYXpzRFpaSjRGcTg4eGtSdGRsY0pCb3RJU0hNOW1MZDJLWGNHam13cUdVQ0JyZTBENkJEcEhaSiswSUZURUhxNWRtM0VpSUZJYk1iUy9JelFZM0lub0oxNUEwd2FpODJRS0ZHVk82TGpLSUZEaWNuTUt1TEVwbFFGOEszOWdwTzc4Tno3TFNJSERZSUxudlB5NEx2djlPZEtyZ1NWbEsxK0hFREsvbmZ5M25aSG5aeDZyamxxNHNYR053YWNka2dKU1dnQWVQaDNmcWpzL2l5SDJHNEJDRXVYQ2R1UEJUTUhoc3pFbFVkdXBtWWpvVE5SbFFpbjJGUFBld2tQT2ZGeDFnbFY4LzJjUVNBSzQ2THlXNzRhMFpHYWRjMEU5QlI0dVlvK3F1Wjk0SHYzSlVVNEtLc3JZQWRSV0xxNnhVV01pL09qWGJiaGFnK2R0cWlkOGV0ZHJnbWUxWVBySWZ3bmNRL2ZLL09ib0JtbGxLeDB2NjJMbFhyaVVNUHZWa0FmWVF4RmNvejdiSjVpVWtJNWJRelMyMUhvSGhxYmI5MkZSWCszYTNrNUhpL1FKS3lJS0s1MnBGOExDUUl6eFVhZTY3NURVQUZiRjBsQXFmRG5yeDVIQytROFM2a0drZkpqOUpXem5UbFBvWFk1WTZjWTdXM2NqIiwiZGF0YWtleSI6IkFRSUJBSGlIV2FZVG5SVVdDYm56KzdMdk1HK0FQdlRIekhsQlVROUZxRW1WMjZCZHd3R1hTdW9pOXNtQWZ6dnZBTUJGSjFpNkFBQUFmakI4QmdrcWhraUc5dzBCQndhZ2J6QnRBZ0VBTUdnR0NTcUdTSWIzRFFFSEFUQWVCZ2xnaGtnQlpRTUVBUzR3RVFRTUtJeitsQW5YYVNEYmlZTTRBZ0VRZ0RzSkttcE5sRlNKbVJHZjE1QVluQjU0WHVvd3IxdXAzRTVKb1pkSUxvcTFsdlNicXhDMkJQRTc4L2U2WWEzTUFQZnROVkRPdDVaU2tjZ0JvQT09IiwidmVyc2lvbiI6IjIiLCJ0eXBlIjoiREFUQV9LRVkiLCJleHBpcmF0aW9uIjoxNTgxMzg5NTI0fQ== https://892751335714.dkr.ecr.ap-south-1.amazonaws.com
+
+(Remove https:// from the end) and run below command (Complete Above line except https://)
+docker login -u AWS -p eyJwYXlsb2FkIjoiRFRrdEZLdXJteDFGUjZ5K2FpZjZCVEVvcHF0QVVoOWdYeXl1aWdoTW5GeXYzcmcyc2V0WVIvRkw4NWFLWkpVMnVjeFJHVm96NE10OUNvTmE4NnRvTDNPYzVmcllNSEJwMjdjU0xvOUxWMTFzNWl3RTVHSndpbk14L3lLZUMrT1FIWmVwbDZKbkcyYXhpSkpCTTJKRUNTQVpwRXFreTNwMmRnM2JDZnlOZk5YYkwzS2VOMldjU2kyaERiNTVhUzRzcXRyeUI3dytJTW9hZkNFTFJkSHF2Vmp3alFRWWY4QUpMd25UTGhaVXZBbDV1VkxXb2xkTHVFS0pzc2g2VE9TSTJTeGZGM0QycUFkYldrZ2pYZG93Vm1qR1dQK0xVdzlCc3BBL3krcHNCeUlMYWE2M0ExYnRJQmpoKzd0aVFTczZUVnlpdjFVb0o0ekhRVUJ2TTZnYXl2aGdaU0dnd2dEZWl2OEsweXVBdmVFQzlaUS9zaUI1OWM4MStTdURLSVAwMW14UlRCNHU1UkVTMkNXR1E0UGZNTVJZU2d0aU83VTV5TVJ0WnFtNlU4MFdPTmNOdDBkcW9NYStqTGVkMjRxZTdQV2RDS0xQdzRlL2dpTCtwVnZmQi8xU0ovS2NuY1U4QVdpUEpvUXoySzJzL0hiL3RaSHpQd09nMXU4ajk5SmNkaHcrVmIxZlZjaTlDS0ZETkI2dHJLVG12NmU5OEVKMjVLYVhoNmQ0ZnU0V3dTYmV4REp6S1h6MENGQW5wd0NtbHBwRU1IaldDaWdqSTIwZGlUVDVVaHhzZHJsNFFyOXBiaW9qakp2ZE1rZXZVMjhEOW01V2padCtEVlVvYlJSRWhKT2hpMjhLWlZOK2lUU3k5UFRzVGxlQ2dmdDRqamZhM1RJOGhEcUtNVGZydmR6eEJzQ2dFbG5Bb2pDQW00RXZsbHpaNGQ0UVRxdlpCbFJSUlYyTnl2azdHTTB0bnBwa1VqNVVoNUkvVUE1L2wvbDNRR1dUd1pnem96Y3NkaXNPQ3VxQmtMQmNseUVHRi9ZamgzbElZc0xleTBlcXc4MzUxSEIzTHFEV2o0TUR0UVU5SVphbmlRZFlxOXhVS094eVdEQ1B4OXBpeFFKQWxMYjE1SVVqeXBoTDJ0MnpWN08vNG5PSjlyM01VQTR0VEoyazYwbURzdC9ZSUhKU1FKaG5vZHRlOU11UmlhZzl2WWFaRUhtZWswTy9ERytqTnRrQkZhNGxXcXRtUzhybVU0QTZoMElnYUxaZ25hRzd0blFSNTNKSkxlS3NDdUdaOHhEV3F0UzVmSkxXWkYwT25KbjFCaWN2U1M5amRGc205MWE0RDVSL3ZiWDg1TENwdlhyWEhwRk5FNkk4RzMvV1BVNDBiSzd4N0gxYVpZQUROY2tmbWxRYW8ydTJ3dFlEajMyYXpzRFpaSjRGcTg4eGtSdGRsY0pCb3RJU0hNOW1MZDJLWGNHam13cUdVQ0JyZTBENkJEcEhaSiswSUZURUhxNWRtM0VpSUZJYk1iUy9JelFZM0lub0oxNUEwd2FpODJRS0ZHVk82TGpLSUZEaWNuTUt1TEVwbFFGOEszOWdwTzc4Tno3TFNJSERZSUxudlB5NEx2djlPZEtyZ1NWbEsxK0hFREsvbmZ5M25aSG5aeDZyamxxNHNYR053YWNka2dKU1dnQWVQaDNmcWpzL2l5SDJHNEJDRXVYQ2R1UEJUTUhoc3pFbFVkdXBtWWpvVE5SbFFpbjJGUFBld2tQT2ZGeDFnbFY4LzJjUVNBSzQ2THlXNzRhMFpHYWRjMEU5QlI0dVlvK3F1Wjk0SHYzSlVVNEtLc3JZQWRSV0xxNnhVV01pL09qWGJiaGFnK2R0cWlkOGV0ZHJnbWUxWVBySWZ3bmNRL2ZLL09ib0JtbGxLeDB2NjJMbFhyaVVNUHZWa0FmWVF4RmNvejdiSjVpVWtJNWJRelMyMUhvSGhxYmI5MkZSWCszYTNrNUhpL1FKS3lJS0s1MnBGOExDUUl6eFVhZTY3NURVQUZiRjBsQXFmRG5yeDVIQytROFM2a0drZkpqOUpXem5UbFBvWFk1WTZjWTdXM2NqIiwiZGF0YWtleSI6IkFRSUJBSGlIV2FZVG5SVVdDYm56KzdMdk1HK0FQdlRIekhsQlVROUZxRW1WMjZCZHd3R1hTdW9pOXNtQWZ6dnZBTUJGSjFpNkFBQUFmakI4QmdrcWhraUc5dzBCQndhZ2J6QnRBZ0VBTUdnR0NTcUdTSWIzRFFFSEFUQWVCZ2xnaGtnQlpRTUVBUzR3RVFRTUtJeitsQW5YYVNEYmlZTTRBZ0VRZ0RzSkttcE5sRlNKbVJHZjE1QVluQjU0WHVvd3IxdXAzRTVKb1pkSUxvcTFsdlNicXhDMkJQRTc4L2U2WWEzTUFQZnROVkRPdDVaU2tjZ0JvQT09IiwidmVyc2lvbiI6IjIiLCJ0eXBlIjoiREFUQV9LRVkiLCJleHBpcmF0aW9uIjoxNTgxMzg5NTI0fQ== 892751335714.dkr.ecr.ap-south-1.amazonaws.com
+It will give 'Login Succeeded'
+	
+Push the Image to the ECR repository
+docker push 892751335714.dkr.ecr.ap-south-1.amazonaws.com/kundandockerimage:latest
+
+
+
+
