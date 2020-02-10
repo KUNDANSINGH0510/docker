@@ -92,5 +92,8 @@ Push the Image to the ECR repository
 docker push 892751335714.dkr.ecr.ap-south-1.amazonaws.com/kundandockerimage:latest
 
 
-
-
+git init
+git add . 
+git commit -m "First commit Message"
+git remote add origin https://github.com/KUNDANSINGH0510/docker.git
+git push -u origin master
