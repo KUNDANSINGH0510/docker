@@ -90,7 +90,7 @@ It will give 'Login Succeeded'
 	
 Push the Image to the ECR repository
 docker push 012345678901.dkr.ecr.ap-south-1.amazonaws.com/kundandockerimage:latest
-			
+
 
 git init
 git add . 
