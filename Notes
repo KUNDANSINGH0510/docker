@@ -97,3 +97,4 @@ git add .
 git commit -m "First commit Message"
 git remote add origin https://github.com/KUNDANSINGH0510/docker.git
 git push -u origin master
+git push -u origin master -f
